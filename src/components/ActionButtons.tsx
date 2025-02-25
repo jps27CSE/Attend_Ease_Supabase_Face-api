@@ -16,7 +16,7 @@ function ActionButtons() {
         className="flex items-center space-x-2 px-6 py-3 text-lg font-semibold bg-red-100 hover:bg-red-200 focus:ring-2 ring-red-500"
       >
         <FaStop className="text-red-500" />
-        <span>End Duty</span>
+        <span className="text-black">End Duty</span>
       </Button>
     </div>
   );
