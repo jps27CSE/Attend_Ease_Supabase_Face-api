@@ -1,18 +1,25 @@
-import dynamic from "next/dynamic";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import * as faceapi from "face-api.js";
+import dynamic from "next/dynamic";
+import { supabase } from "@/lib/supabaseClient";
 
-const WebcamWithNoSSR = dynamic(() => import("react-webcam"), { ssr: false });
+// Dynamically import Webcam to avoid SSR issues
+const Webcam = dynamic(() => import("react-webcam"), {
+  ssr: false, // Disable server-side rendering
+});
 
 const RegisterModal = ({ open, setOpen }) => {
   const [username, setUsername] = useState("");
   const [profilePic, setProfilePic] = useState(null);
+  const [profilePicFile, setProfilePicFile] = useState(null); // Store File object
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
   const webcamRef = useRef(null);
   const [faceDetected, setFaceDetected] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [faceDescriptor, setFaceDescriptor] = useState(null);
+  const recognitionInterval = useRef(null);
 
   useEffect(() => {
     const loadModels = async () => {
@@ -23,7 +30,6 @@ const RegisterModal = ({ open, setOpen }) => {
           faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
         ]);
         setModelsLoaded(true);
-        console.log("Models loaded successfully");
       } catch (error) {
         console.error("Error loading models:", error);
       }
@@ -37,14 +43,18 @@ const RegisterModal = ({ open, setOpen }) => {
   const handleWebcamCapture = () => {
     setIsWebcamActive(true);
     setIsRecognizing(true);
+    startRecognition();
   };
 
   const handleStopRecognition = () => {
     setIsRecognizing(false);
+    clearInterval(recognitionInterval.current);
   };
 
-  const handleWebcamFrame = async () => {
-    if (modelsLoaded && webcamRef.current?.video && isRecognizing) {
+  const startRecognition = () => {
+    recognitionInterval.current = setInterval(async () => {
+      if (!modelsLoaded || !webcamRef.current?.video) return;
+
       try {
         const detections = await faceapi
           .detectAllFaces(
@@ -54,24 +64,56 @@ const RegisterModal = ({ open, setOpen }) => {
           .withFaceLandmarks()
           .withFaceDescriptors();
 
-        setFaceDetected(detections.length > 0);
+        if (detections.length > 0) {
+          setFaceDetected(true);
+          setFaceDescriptor(detections[0].descriptor);
+        } else {
+          setFaceDetected(false);
+        }
       } catch (error) {
         console.error("Error during face detection:", error);
       }
-    }
+    }, 500); // Run every 500ms
   };
 
-  useEffect(() => {
-    let intervalId;
-    if (isRecognizing) {
-      intervalId = setInterval(handleWebcamFrame, 100);
+  const handleSubmit = async () => {
+    if (!username || !profilePicFile || !faceDescriptor) {
+      console.log("Missing required fields");
+      return;
     }
-    return () => clearInterval(intervalId);
-  }, [isRecognizing, modelsLoaded]);
 
-  const handleSubmit = () => {
-    console.log({ username, profilePic, faceDetected });
-    setOpen(false);
+    try {
+      // Upload profile picture to Supabase Storage
+      const filePath = `${username}/${Date.now()}_${profilePicFile.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("profile_pictures")
+        .upload(filePath, profilePicFile);
+
+      if (uploadError) {
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
+      }
+
+      // Insert user data into Supabase database
+      const { data: user, error: dbError } = await supabase
+        .from("users")
+        .insert([
+          {
+            username,
+            profile_picture: filePath,
+            face_data: Array.from(faceDescriptor),
+          },
+        ])
+        .select();
+
+      if (dbError) {
+        throw new Error(`Database insert failed: ${dbError.message}`);
+      }
+
+      console.log("Registration successful:", user);
+      setOpen(false); // Close modal on success
+    } catch (error) {
+      console.error("Error during registration:", error);
+    }
   };
 
   return (
@@ -102,29 +144,29 @@ const RegisterModal = ({ open, setOpen }) => {
               id="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full mt-2 p-2 border border-gray-300 rounded-md"
+              className="w-full mt-2 p-2 border border-gray-300 rounded-md text-black"
               placeholder="Enter username"
             />
           </div>
           <div className="mt-4">
-            <label className="block text-sm font-medium text-gray-700 ">
+            <label className="block text-sm font-medium text-gray-700">
               Upload Profile Picture
             </label>
             <input
               type="file"
-              onChange={(e) =>
-                setProfilePic(URL.createObjectURL(e.target.files[0]))
-              }
-              className="w-full mt-2 p-2 border border-gray-300 rounded-md"
+              accept="image/*"
+              onChange={(e) => {
+                setProfilePic(URL.createObjectURL(e.target.files[0]));
+                setProfilePicFile(e.target.files[0]); // Store the file object
+              }}
+              className="w-full mt-2 p-2 border border-gray-300 rounded-md text-black"
             />
             {profilePic && (
-              <div className="mt-2">
-                <img
-                  src={profilePic}
-                  alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover"
-                />
-              </div>
+              <img
+                src={profilePic}
+                alt="Profile"
+                className="mt-2 w-24 h-24 rounded-full object-cover"
+              />
             )}
           </div>
           <div className="mt-4">
@@ -137,33 +179,27 @@ const RegisterModal = ({ open, setOpen }) => {
             </Button>
             {isWebcamActive && (
               <div className="mt-4">
-                <WebcamWithNoSSR
+                <Webcam
                   ref={webcamRef}
                   audio={false}
                   screenshotFormat="image/jpeg"
                   width="100%"
-                  videoConstraints={{
-                    facingMode: "user",
-                  }}
+                  videoConstraints={{ facingMode: "user" }}
                 />
-                {faceDetected ? (
-                  <div className="mt-2 text-green-600">Face Detected</div>
-                ) : (
-                  isRecognizing && (
-                    <div className="mt-2 text-red-600">No Face Detected</div>
-                  )
-                )}
+                <div
+                  className={`mt-2 ${faceDetected ? "text-green-600" : "text-red-600"}`}
+                >
+                  {faceDetected ? "Face Detected" : "No Face Detected"}
+                </div>
+                <Button
+                  variant="destructive"
+                  onClick={handleStopRecognition}
+                  className="mt-2 w-full text-black"
+                >
+                  Stop Recognition
+                </Button>
               </div>
             )}
-          </div>
-          <div className="mt-4">
-            <Button
-              variant="primary"
-              onClick={handleStopRecognition}
-              className="w-full text-black"
-            >
-              Stop Recognition
-            </Button>
           </div>
           <div className="mt-4">
             <Button
