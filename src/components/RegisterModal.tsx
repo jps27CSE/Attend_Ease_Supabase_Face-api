@@ -1,3 +1,4 @@
+"use client";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import * as faceapi from "face-api.js";
@@ -100,7 +101,7 @@ const RegisterModal = ({ open, setOpen }) => {
           {
             username,
             profile_picture: filePath,
-            face_data: Array.from(faceDescriptor),
+            face_data: Array.from(faceDescriptor), // Convert Float32Array to array
           },
         ])
         .select();
