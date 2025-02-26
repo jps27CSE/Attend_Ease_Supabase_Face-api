@@ -1,18 +1,24 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-function UserInfo() {
+function UserInfo({ user }) {
   return (
     <Card className="shadow-lg rounded-lg">
       <CardHeader>
         <CardTitle className="text-xl font-semibold">Employee Info</CardTitle>
       </CardHeader>
       <CardContent>
-        <p>
-          <strong>Name:</strong> John Doe
-        </p>
-        <p>
-          <strong>Role:</strong> Software Engineer
-        </p>
+        {user ? (
+          <>
+            <p>
+              <strong>Name:</strong> {user.username}
+            </p>
+            <p>
+              <strong>Role:</strong> {user.role}
+            </p>
+          </>
+        ) : (
+          <p>No employee data available.</p>
+        )}
       </CardContent>
     </Card>
   );

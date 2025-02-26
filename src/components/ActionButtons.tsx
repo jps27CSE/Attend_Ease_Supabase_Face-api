@@ -11,7 +11,7 @@ const Webcam = dynamic(() => import("react-webcam"), {
   ssr: false,
 });
 
-function ActionButtons() {
+function ActionButtons({ onUserMatch }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWebcamActive, setIsWebcamActive] = useState(false);
   const [isRecognizing, setIsRecognizing] = useState(false);
@@ -99,6 +99,8 @@ function ActionButtons() {
               // If the distance is below a threshold, it's a match
               if (distance < 0.6) {
                 console.log("User matched:", user);
+                onUserMatch(user); // Pass the matched user data to the parent component
+                handleCloseModal(); // Close the modal after a match
                 return; // Exit after finding a match
               }
             } else {
