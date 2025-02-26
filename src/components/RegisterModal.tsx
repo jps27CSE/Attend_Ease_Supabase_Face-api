@@ -12,6 +12,7 @@ const Webcam = dynamic(() => import("react-webcam"), {
 
 const RegisterModal = ({ open, setOpen }) => {
   const [username, setUsername] = useState("");
+  const [role, setRole] = useState(""); // State for role/designation
   const [profilePic, setProfilePic] = useState(null);
   const [profilePicFile, setProfilePicFile] = useState(null); // Store File object
   const [isWebcamActive, setIsWebcamActive] = useState(false);
@@ -78,7 +79,7 @@ const RegisterModal = ({ open, setOpen }) => {
   };
 
   const handleSubmit = async () => {
-    if (!username || !profilePicFile || !faceDescriptor) {
+    if (!username || !profilePicFile || !faceDescriptor || !role) {
       console.log("Missing required fields");
       return;
     }
@@ -100,6 +101,7 @@ const RegisterModal = ({ open, setOpen }) => {
         .insert([
           {
             username,
+            role, // Include role/designation in the insert
             profile_picture: filePath,
             face_data: Array.from(faceDescriptor), // Convert Float32Array to array
           },
@@ -147,6 +149,22 @@ const RegisterModal = ({ open, setOpen }) => {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full mt-2 p-2 border border-gray-300 rounded-md text-black"
               placeholder="Enter username"
+            />
+          </div>
+          <div className="mt-4">
+            <label
+              htmlFor="role"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Role/Designation
+            </label>
+            <input
+              type="text"
+              id="role"
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="w-full mt-2 p-2 border border-gray-300 rounded-md text-black"
+              placeholder="Enter role/designation (e.g., Software Engineer)"
             />
           </div>
           <div className="mt-4">
