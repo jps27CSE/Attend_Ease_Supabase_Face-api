@@ -19,6 +19,14 @@ const AttendanceTable = () => {
     // Add more data rows as needed
   ];
 
+  // Function to calculate duty time (hours worked)
+  const calculateDutyTime = (startTime, endTime) => {
+    const start = new Date(`01/01/2000 ${startTime}`);
+    const end = new Date(`01/01/2000 ${endTime}`);
+    const diff = (end - start) / (1000 * 60 * 60); // Difference in hours
+    return `${diff.toFixed(2)} hours`;
+  };
+
   return (
     <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
       <table className="min-w-full table-auto">
@@ -35,10 +43,10 @@ const AttendanceTable = () => {
               End Time
             </th>
             <th className="px-6 py-3 font-semibold text-sm text-left">
-              Status
+              Duty Time
             </th>
-            <th className="px-6 py-3 font-semibold text-sm text-center">
-              Action
+            <th className="px-6 py-3 font-semibold text-sm text-left">
+              Status
             </th>
           </tr>
         </thead>
@@ -50,6 +58,9 @@ const AttendanceTable = () => {
               <td className="px-6 py-4 text-sm text-left">{item.startTime}</td>
               <td className="px-6 py-4 text-sm text-left">{item.endTime}</td>
               <td className="px-6 py-4 text-sm text-left">
+                {calculateDutyTime(item.startTime, item.endTime)}
+              </td>
+              <td className="px-6 py-4 text-sm text-left">
                 <span
                   className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
                     item.status === "Present"
@@ -59,11 +70,6 @@ const AttendanceTable = () => {
                 >
                   {item.status}
                 </span>
-              </td>
-              <td className="px-6 py-4 text-sm text-center">
-                <Button variant="outline" size="sm">
-                  Edit
-                </Button>
               </td>
             </tr>
           ))}
