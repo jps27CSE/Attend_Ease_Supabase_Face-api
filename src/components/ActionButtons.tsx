@@ -17,6 +17,8 @@ function ActionButtons({ onUserMatch }) {
   const [isRecognizing, setIsRecognizing] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [isAttendanceUpdated, setIsAttendanceUpdated] = useState(false); // Flag to track attendance update
+  const [isProcessing, setIsProcessing] = useState(false); // Flag to prevent multiple processing
   const webcamRef = useRef(null);
   const recognitionInterval = useRef(null);
 
@@ -43,7 +45,7 @@ function ActionButtons({ onUserMatch }) {
   // Start face recognition
   const startRecognition = () => {
     recognitionInterval.current = setInterval(async () => {
-      if (!modelsLoaded || !webcamRef.current?.video) return;
+      if (!modelsLoaded || !webcamRef.current?.video || isProcessing) return;
 
       try {
         const detections = await faceapi
@@ -57,12 +59,14 @@ function ActionButtons({ onUserMatch }) {
         if (detections.length > 0) {
           setFaceDetected(true);
           const faceDescriptor = detections[0].descriptor;
+          setIsProcessing(true); // Set processing flag to true
           await matchFaceData(faceDescriptor); // Match face data with Supabase
         } else {
           setFaceDetected(false);
         }
       } catch (error) {
         console.error("Error during face detection:", error);
+        setIsProcessing(false); // Reset processing flag on error
       }
     }, 500); // Run every 500ms
   };
@@ -100,6 +104,50 @@ function ActionButtons({ onUserMatch }) {
               if (distance < 0.6) {
                 console.log("User matched:", user);
                 onUserMatch(user); // Pass the matched user data to the parent component
+
+                // Check if attendance has already been updated
+                if (!isAttendanceUpdated) {
+                  // Update attendance table with start time, date, and user name
+                  const { data: attendanceData, error: attendanceError } =
+                    await supabase
+                      .from("attendance")
+                      .insert([
+                        {
+                          user_name: user.username,
+                          date: new Date().toISOString().split("T")[0], // Current date in YYYY-MM-DD format
+                          start_time: new Date().toLocaleTimeString(), // Current time
+                          status: "Present",
+                        },
+                      ])
+                      .select();
+
+                  if (attendanceError) {
+                    throw new Error(
+                      `Attendance update failed: ${attendanceError.message}`,
+                    );
+                  }
+
+                  console.log("Attendance updated:", attendanceData);
+
+                  // Set the flag to true to prevent further updates
+                  setIsAttendanceUpdated(true);
+
+                  // Fetch the updated attendance data
+                  const { data: updatedAttendance, error: fetchError } =
+                    await supabase.from("attendance").select("*");
+
+                  if (fetchError) {
+                    throw new Error(
+                      `Fetching attendance data failed: ${fetchError.message}`,
+                    );
+                  }
+
+                  console.log("Updated attendance data:", updatedAttendance);
+
+                  // Stop the recognition interval after a successful match
+                  clearInterval(recognitionInterval.current);
+                }
+
                 handleCloseModal(); // Close the modal after a match
                 return; // Exit after finding a match
               }
@@ -118,6 +166,8 @@ function ActionButtons({ onUserMatch }) {
       console.log("No matching user found.");
     } catch (error) {
       console.error("Error matching face data:", error);
+    } finally {
+      setIsProcessing(false); // Reset processing flag
     }
   };
 
@@ -126,6 +176,7 @@ function ActionButtons({ onUserMatch }) {
     setIsModalOpen(true);
     setIsWebcamActive(true);
     setIsRecognizing(true);
+    setIsAttendanceUpdated(false); // Reset the flag
     startRecognition();
   };
 
@@ -134,6 +185,8 @@ function ActionButtons({ onUserMatch }) {
     setIsModalOpen(false);
     setIsWebcamActive(false);
     setIsRecognizing(false);
+    setIsAttendanceUpdated(false); // Reset the flag
+    setIsProcessing(false); // Reset processing flag
     clearInterval(recognitionInterval.current);
   };
 
