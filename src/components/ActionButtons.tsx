@@ -6,23 +6,18 @@ import * as faceapi from "face-api.js";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabaseClient";
 
-// Dynamically import Webcam to avoid SSR issues
-const Webcam = dynamic(() => import("react-webcam"), {
-  ssr: false,
-});
+const Webcam = dynamic(() => import("react-webcam"), { ssr: false });
 
 function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isWebcamActive, setIsWebcamActive] = useState(false);
-  const [isRecognizing, setIsRecognizing] = useState(false);
   const [faceDetected, setFaceDetected] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [isAttendanceUpdated, setIsAttendanceUpdated] = useState(false); // Flag to track attendance update
-  const [isProcessing, setIsProcessing] = useState(false); // Flag to prevent multiple processing
+  const [matchedUser, setMatchedUser] = useState(null);
+  const isProcessing = useRef(false);
   const webcamRef = useRef(null);
   const recognitionInterval = useRef(null);
 
-  // Load face-api.js models
   useEffect(() => {
     const loadModels = async () => {
       try {
@@ -42,10 +37,10 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
     }
   }, []);
 
-  // Start face recognition
   const startRecognition = () => {
     recognitionInterval.current = setInterval(async () => {
-      if (!modelsLoaded || !webcamRef.current?.video || isProcessing) return;
+      if (!modelsLoaded || !webcamRef.current?.video || isProcessing.current)
+        return;
 
       try {
         const detections = await faceapi
@@ -59,162 +54,110 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
         if (detections.length > 0) {
           setFaceDetected(true);
           const faceDescriptor = detections[0].descriptor;
-          setIsProcessing(true); // Set processing flag to true
-          await matchFaceData(faceDescriptor); // Match face data with Supabase
+
+          isProcessing.current = true; // Prevent multiple matches at once
+          await matchFaceData(faceDescriptor);
         } else {
           setFaceDetected(false);
         }
       } catch (error) {
         console.error("Error during face detection:", error);
-        setIsProcessing(false); // Reset processing flag on error
       }
-    }, 500); // Run every 500ms
+    }, 500);
   };
 
-  // Match face data with Supabase users table
   const matchFaceData = async (faceDescriptor) => {
     try {
-      // Fetch all users from the database
       const { data: users, error } = await supabase.from("users").select("*");
+      if (error) throw new Error(`Database fetch failed: ${error.message}`);
 
-      if (error) {
-        throw new Error(`Database fetch failed: ${error.message}`);
-      }
+      for (const user of users) {
+        const hexString = user.face_data.slice(2);
+        const decodedString = Buffer.from(hexString, "hex").toString("utf-8");
+        const faceDataArray = JSON.parse(decodedString);
+        if (!Array.isArray(faceDataArray)) continue;
 
-      // Compare face descriptors
-      if (users && users.length > 0) {
-        for (const user of users) {
-          // Decode the hexadecimal face_data
-          const hexString = user.face_data.slice(2); // Remove the \x prefix
-          const decodedString = Buffer.from(hexString, "hex").toString("utf-8");
-          const faceDataArray = JSON.parse(decodedString);
+        const storedDescriptor = new Float32Array(faceDataArray);
+        if (storedDescriptor.length !== faceDescriptor.length) continue;
 
-          // Ensure the face_data is an array and convert it to Float32Array
-          if (Array.isArray(faceDataArray)) {
-            const storedDescriptor = new Float32Array(faceDataArray);
-
-            // Ensure both descriptors have the same length
-            if (storedDescriptor.length === faceDescriptor.length) {
-              const distance = faceapi.euclideanDistance(
-                storedDescriptor,
-                faceDescriptor,
-              );
-
-              // If the distance is below a threshold, it's a match
-              if (distance < 0.6) {
-                console.log("User matched:", user);
-                onUserMatch(user); // Pass the matched user data to the parent component
-
-                // Check if attendance has already been updated
-                if (!isAttendanceUpdated) {
-                  // Check if the user already has an entry for today without an end_time
-                  const { data: existingEntry, error: fetchError } =
-                    await supabase
-                      .from("attendance")
-                      .select("*")
-                      .eq("user_name", user.username)
-                      .eq("date", new Date().toISOString().split("T")[0])
-                      .is("end_time", null);
-
-                  if (fetchError) {
-                    throw new Error(
-                      `Fetching attendance data failed: ${fetchError.message}`,
-                    );
-                  }
-
-                  // If an entry exists for today without an end_time, prevent creating a new entry
-                  if (existingEntry && existingEntry.length > 0) {
-                    console.log("User already has an active duty for today.");
-                    alert(
-                      "You already have an active duty for today. Please end your duty before starting a new one.",
-                    );
-                    handleCloseModal(); // Close the modal
-                    return; // Exit the function
-                  }
-
-                  // If no active duty exists, create a new attendance record
-                  const { data: attendanceData, error: attendanceError } =
-                    await supabase
-                      .from("attendance")
-                      .insert([
-                        {
-                          user_name: user.username,
-                          date: new Date().toISOString().split("T")[0], // Current date in YYYY-MM-DD format
-                          start_time: new Date().toLocaleTimeString(), // Current time
-                          status: "Present",
-                        },
-                      ])
-                      .select();
-
-                  if (attendanceError) {
-                    throw new Error(
-                      `Attendance update failed: ${attendanceError.message}`,
-                    );
-                  }
-
-                  console.log("Attendance updated:", attendanceData);
-
-                  // Set the flag to true to prevent further updates
-                  setIsAttendanceUpdated(true);
-
-                  // Fetch the updated attendance data
-                  const { data: updatedAttendance, error: fetchUpdatedError } =
-                    await supabase.from("attendance").select("*");
-
-                  if (fetchUpdatedError) {
-                    throw new Error(
-                      `Fetching attendance data failed: ${fetchUpdatedError.message}`,
-                    );
-                  }
-
-                  console.log("Updated attendance data:", updatedAttendance);
-
-                  // Pass the updated attendance data to the parent component
-                  onAttendanceUpdate(updatedAttendance);
-
-                  // Stop the recognition interval after a successful match
-                  clearInterval(recognitionInterval.current);
-                }
-
-                handleCloseModal(); // Close the modal after a match
-                return; // Exit after finding a match
-              }
-            } else {
-              console.error("Descriptor length mismatch:", {
-                stored: storedDescriptor.length,
-                detected: faceDescriptor.length,
-              });
-            }
-          } else {
-            console.error("Invalid face_data format for user:", user.username);
-          }
+        const distance = faceapi.euclideanDistance(
+          storedDescriptor,
+          faceDescriptor,
+        );
+        if (distance < 0.6) {
+          console.log("User matched:", user);
+          setMatchedUser(user); // Store matched user
+          onUserMatch(user); // Pass user to parent component
+          clearInterval(recognitionInterval.current); // Stop recognition
+          return;
         }
       }
 
       console.log("No matching user found.");
+      isProcessing.current = false;
     } catch (error) {
       console.error("Error matching face data:", error);
-    } finally {
-      setIsProcessing(false); // Reset processing flag
+      isProcessing.current = false;
     }
   };
 
-  // Handle Start Duty button click
   const handleStartDuty = () => {
     setIsModalOpen(true);
     setIsWebcamActive(true);
-    setIsRecognizing(true);
-    setIsAttendanceUpdated(false); // Reset the flag
+    setMatchedUser(null); // Reset matched user
+    isProcessing.current = false;
     startRecognition();
   };
 
-  // Handle modal close
+  const handleMarkAttendance = async () => {
+    if (!matchedUser) return;
+
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const { data: existingEntry, error: fetchError } = await supabase
+        .from("attendance")
+        .select("*")
+        .eq("user_name", matchedUser.username)
+        .eq("date", today)
+        .is("end_time", null);
+
+      if (fetchError)
+        throw new Error(`Fetching attendance failed: ${fetchError.message}`);
+      if (existingEntry && existingEntry.length > 0) {
+        alert(
+          "You already have an active duty today. Please end your duty before starting a new one.",
+        );
+        return;
+      }
+
+      const { data: attendanceData, error: attendanceError } = await supabase
+        .from("attendance")
+        .insert([
+          {
+            user_name: matchedUser.username,
+            date: today,
+            start_time: new Date().toLocaleTimeString(),
+            status: "Present",
+          },
+        ])
+        .select();
+
+      if (attendanceError)
+        throw new Error(`Attendance update failed: ${attendanceError.message}`);
+
+      console.log("Attendance updated:", attendanceData);
+      onAttendanceUpdate(attendanceData);
+      handleCloseModal();
+    } catch (error) {
+      console.error("Error marking attendance:", error);
+    }
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setIsWebcamActive(false);
-    setIsRecognizing(false);
-    setIsAttendanceUpdated(false); // Reset the flag
-    setIsProcessing(false); // Reset processing flag
+    setMatchedUser(null);
+    isProcessing.current = false;
     clearInterval(recognitionInterval.current);
   };
 
@@ -238,7 +181,6 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
         </Button>
       </div>
 
-      {/* Webcam Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
@@ -256,19 +198,31 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
             </div>
             <div className="mt-4">
               {isWebcamActive && (
-                <div className="mt-4">
-                  <Webcam
-                    ref={webcamRef}
-                    audio={false}
-                    screenshotFormat="image/jpeg"
-                    width="100%"
-                    videoConstraints={{ facingMode: "user" }}
-                  />
-                  <div
-                    className={`mt-2 ${faceDetected ? "text-green-600" : "text-red-600"}`}
+                <Webcam
+                  ref={webcamRef}
+                  audio={false}
+                  screenshotFormat="image/jpeg"
+                  width="100%"
+                  videoConstraints={{ facingMode: "user" }}
+                />
+              )}
+              <div
+                className={`mt-2 ${faceDetected ? "text-green-600" : "text-red-600"}`}
+              >
+                {faceDetected ? "Face Detected" : "No Face Detected"}
+              </div>
+
+              {matchedUser && (
+                <div className="mt-4 text-center">
+                  <p className="text-green-600 font-semibold">
+                    User Matched: {matchedUser.username}
+                  </p>
+                  <Button
+                    onClick={handleMarkAttendance}
+                    className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md"
                   >
-                    {faceDetected ? "Face Detected" : "No Face Detected"}
-                  </div>
+                    Mark Present
+                  </Button>
                 </div>
               )}
             </div>
