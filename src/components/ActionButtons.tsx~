@@ -50,12 +50,12 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
 
       try {
         const detections = await faceapi
-          .detectAllFaces(
-            webcamRef.current.video,
-            new faceapi.SsdMobilenetv1Options(),
-          )
-          .withFaceLandmarks()
-          .withFaceDescriptors();
+            .detectAllFaces(
+                webcamRef.current.video,
+                new faceapi.SsdMobilenetv1Options(),
+            )
+            .withFaceLandmarks()
+            .withFaceDescriptors();
 
         if (detections.length > 0) {
           setFaceDetected(true);
@@ -97,8 +97,8 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
             // Ensure both descriptors have the same length
             if (storedDescriptor.length === faceDescriptor.length) {
               const distance = faceapi.euclideanDistance(
-                storedDescriptor,
-                faceDescriptor,
+                  storedDescriptor,
+                  faceDescriptor,
               );
 
               // If the distance is below a threshold, it's a match
@@ -110,8 +110,7 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
                 if (isMatchProcessed) return;
 
                 // Check if the user already has an entry for today without an end_time
-                const { data: existingEntry, error: fetchError } =
-                  await supabase
+                const { data: existingEntry, error: fetchError } = await supabase
                     .from("attendance")
                     .select("*")
                     .eq("user_name", user.username)
@@ -120,37 +119,35 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
 
                 if (fetchError) {
                   throw new Error(
-                    `Fetching attendance data failed: ${fetchError.message}`,
+                      `Fetching attendance data failed: ${fetchError.message}`,
                   );
                 }
 
                 // If an entry exists for today without an end_time, prevent creating a new entry
                 if (existingEntry && existingEntry.length > 0) {
                   console.log("User already has an active duty for today.");
-                  alert(
-                    "You already have an active duty for today. Please end your duty before starting a new one.",
-                  );
+                  alert("You already have an active duty for today. Please end your duty before starting a new one.");
                   handleCloseModal(); // Close the modal
                   return; // Exit the function
                 }
 
                 // If no active duty exists, create a new attendance record
                 const { data: attendanceData, error: attendanceError } =
-                  await supabase
-                    .from("attendance")
-                    .insert([
-                      {
-                        user_name: user.username,
-                        date: new Date().toISOString().split("T")[0], // Current date in YYYY-MM-DD format
-                        start_time: new Date().toLocaleTimeString(), // Current time
-                        status: "Present",
-                      },
-                    ])
-                    .select();
+                    await supabase
+                        .from("attendance")
+                        .insert([
+                          {
+                            user_name: user.username,
+                            date: new Date().toISOString().split("T")[0], // Current date in YYYY-MM-DD format
+                            start_time: new Date().toLocaleTimeString(), // Current time
+                            status: "Present",
+                          },
+                        ])
+                        .select();
 
                 if (attendanceError) {
                   throw new Error(
-                    `Attendance update failed: ${attendanceError.message}`,
+                      `Attendance update failed: ${attendanceError.message}`,
                   );
                 }
 
@@ -162,11 +159,11 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
 
                 // Fetch the updated attendance data
                 const { data: updatedAttendance, error: fetchUpdatedError } =
-                  await supabase.from("attendance").select("*");
+                    await supabase.from("attendance").select("*");
 
                 if (fetchUpdatedError) {
                   throw new Error(
-                    `Fetching attendance data failed: ${fetchUpdatedError.message}`,
+                      `Fetching attendance data failed: ${fetchUpdatedError.message}`,
                   );
                 }
 
@@ -220,63 +217,63 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
   };
 
   return (
-    <>
-      <div className="p-6 bg-gray-200 rounded-lg shadow-lg flex justify-center items-center space-x-6">
-        <Button
-          variant="outline"
-          className="flex items-center space-x-2 px-6 py-3 text-lg font-semibold bg-blue-100 hover:bg-blue-200 focus:ring-2 ring-blue-500"
-          onClick={handleStartDuty}
-        >
-          <FaPlay className="text-blue-500" />
-          <span>Start Duty</span>
-        </Button>
-        <Button
-          variant="destructive"
-          className="flex items-center space-x-2 px-6 py-3 text-lg font-semibold bg-red-100 hover:bg-red-200 focus:ring-2 ring-red-500"
-        >
-          <FaStop className="text-red-500" />
-          <span className="text-black">End Duty</span>
-        </Button>
-      </div>
-
-      {/* Webcam Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex justify-center items-center z-50">
-          <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-black">
-                Face Recognition
-              </h2>
-              <Button
-                className="text-black"
-                variant="outline"
-                onClick={handleCloseModal}
-              >
-                Close
-              </Button>
-            </div>
-            <div className="mt-4">
-              {isWebcamActive && (
-                <div className="mt-4">
-                  <Webcam
-                    ref={webcamRef}
-                    audio={false}
-                    screenshotFormat="image/jpeg"
-                    width="100%"
-                    videoConstraints={{ facingMode: "user" }}
-                  />
-                  <div
-                    className={`mt-2 ${faceDetected ? "text-green-600" : "text-red-600"}`}
-                  >
-                    {faceDetected ? "Face Detected" : "No Face Detected"}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+      <>
+        <div className="p-6 bg-gray-200 rounded-lg shadow-lg flex justify-center items-center space-x-6">
+          <Button
+              variant="outline"
+              className="flex items-center space-x-2 px-6 py-3 text-lg font-semibold bg-blue-100 hover:bg-blue-200 focus:ring-2 ring-blue-500"
+              onClick={handleStartDuty}
+          >
+            <FaPlay className="text-blue-500" />
+            <span>Start Duty</span>
+          </Button>
+          <Button
+              variant="destructive"
+              className="flex items-center space-x-2 px-6 py-3 text-lg font-semibold bg-red-100 hover:bg-red-200 focus:ring-2 ring-red-500"
+          >
+            <FaStop className="text-red-500" />
+            <span className="text-black">End Duty</span>
+          </Button>
         </div>
-      )}
-    </>
+
+        {/* Webcam Modal */}
+        {isModalOpen && (
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex justify-center items-center z-50">
+              <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-xl font-semibold text-black">
+                    Face Recognition
+                  </h2>
+                  <Button
+                      className="text-black"
+                      variant="outline"
+                      onClick={handleCloseModal}
+                  >
+                    Close
+                  </Button>
+                </div>
+                <div className="mt-4">
+                  {isWebcamActive && (
+                      <div className="mt-4">
+                        <Webcam
+                            ref={webcamRef}
+                            audio={false}
+                            screenshotFormat="image/jpeg"
+                            width="100%"
+                            videoConstraints={{ facingMode: "user" }}
+                        />
+                        <div
+                            className={`mt-2 ${faceDetected ? "text-green-600" : "text-red-600"}`}
+                        >
+                          {faceDetected ? "Face Detected" : "No Face Detected"}
+                        </div>
+                      </div>
+                  )}
+                </div>
+              </div>
+            </div>
+        )}
+      </>
   );
 }
 

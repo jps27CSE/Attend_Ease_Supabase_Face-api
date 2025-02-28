@@ -11,9 +11,9 @@ const AttendanceTable = ({ attendanceData }) => {
   };
 
   return (
-    <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
-      <table className="min-w-full table-auto">
-        <thead className="bg-gray-800 text-white">
+      <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
+        <table className="min-w-full table-auto">
+          <thead className="bg-gray-800 text-white">
           <tr>
             <th className="px-6 py-3 font-semibold text-sm text-left">
               Username
@@ -32,33 +32,33 @@ const AttendanceTable = ({ attendanceData }) => {
               Status
             </th>
           </tr>
-        </thead>
-        <tbody className="text-gray-700">
+          </thead>
+          <tbody className="text-gray-700">
           {attendanceData?.map((item, index) => (
-            <tr key={index} className="border-b">
-              <td className="px-6 py-4 text-sm text-left">{item.user_name}</td>
-              <td className="px-6 py-4 text-sm text-left">{item.date}</td>
-              <td className="px-6 py-4 text-sm text-left">{item.start_time}</td>
-              <td className="px-6 py-4 text-sm text-left">{item.end_time}</td>
-              <td className="px-6 py-4 text-sm text-left">
-                {calculateDutyTime(item.start_time, item.end_time)}
-              </td>
-              <td className="px-6 py-4 text-sm text-left">
+              <tr key={index} className="border-b">
+                <td className="px-6 py-4 text-sm text-left">{item.user_name}</td>
+                <td className="px-6 py-4 text-sm text-left">{item.date}</td>
+                <td className="px-6 py-4 text-sm text-left">{item.start_time}</td>
+                <td className="px-6 py-4 text-sm text-left">{item.end_time}</td>
+                <td className="px-6 py-4 text-sm text-left">
+                  {calculateDutyTime(item.start_time, item.end_time)}
+                </td>
+                <td className="px-6 py-4 text-sm text-left">
                 <span
-                  className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
-                    item.status === "Present"
-                      ? "bg-green-100 text-green-600"
-                      : "bg-red-100 text-red-600"
-                  }`}
+                    className={`inline-block px-3 py-1 text-xs font-semibold rounded-full ${
+                        item.status === "Present"
+                            ? "bg-green-100 text-green-600"
+                            : "bg-red-100 text-red-600"
+                    }`}
                 >
                   {item.status}
                 </span>
-              </td>
-            </tr>
+                </td>
+              </tr>
           ))}
-        </tbody>
-      </table>
-    </div>
+          </tbody>
+        </table>
+      </div>
   );
 };
 
