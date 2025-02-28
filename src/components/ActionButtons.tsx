@@ -19,7 +19,6 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isAttendanceUpdated, setIsAttendanceUpdated] = useState(false); // Flag to track attendance update
   const [isProcessing, setIsProcessing] = useState(false); // Flag to prevent multiple processing
-  const [isMatchProcessed, setIsMatchProcessed] = useState(false); // Flag to track if a match has been processed
   const webcamRef = useRef(null);
   const recognitionInterval = useRef(null);
 
@@ -106,77 +105,79 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
                 console.log("User matched:", user);
                 onUserMatch(user); // Pass the matched user data to the parent component
 
-                // Prevent processing the same match multiple times
-                if (isMatchProcessed) return;
+                // Check if attendance has already been updated
+                if (!isAttendanceUpdated) {
+                  // Check if the user already has an entry for today without an end_time
+                  const { data: existingEntry, error: fetchError } =
+                    await supabase
+                      .from("attendance")
+                      .select("*")
+                      .eq("user_name", user.username)
+                      .eq("date", new Date().toISOString().split("T")[0])
+                      .is("end_time", null);
 
-                // Check if the user already has an entry for today without an end_time
-                const { data: existingEntry, error: fetchError } =
-                  await supabase
-                    .from("attendance")
-                    .select("*")
-                    .eq("user_name", user.username)
-                    .eq("date", new Date().toISOString().split("T")[0])
-                    .is("end_time", null);
+                  if (fetchError) {
+                    throw new Error(
+                      `Fetching attendance data failed: ${fetchError.message}`,
+                    );
+                  }
 
-                if (fetchError) {
-                  throw new Error(
-                    `Fetching attendance data failed: ${fetchError.message}`,
-                  );
+                  // If an entry exists for today without an end_time, prevent creating a new entry
+                  if (existingEntry && existingEntry.length > 0) {
+                    console.log("User already has an active duty for today.");
+                    alert(
+                      "You already have an active duty for today. Please end your duty before starting a new one.",
+                    );
+                    handleCloseModal(); // Close the modal
+                    return; // Exit the function
+                  }
+
+                  // If no active duty exists, create a new attendance record
+                  const { data: attendanceData, error: attendanceError } =
+                    await supabase
+                      .from("attendance")
+                      .insert([
+                        {
+                          user_name: user.username,
+                          date: new Date().toISOString().split("T")[0], // Current date in YYYY-MM-DD format
+                          start_time: new Date().toLocaleTimeString(), // Current time
+                          status: "Present",
+                        },
+                      ])
+                      .select();
+
+                  if (attendanceError) {
+                    throw new Error(
+                      `Attendance update failed: ${attendanceError.message}`,
+                    );
+                  }
+
+                  console.log("Attendance updated:", attendanceData);
+
+                  // Set the flag to true to prevent further updates
+                  setIsAttendanceUpdated(true);
+
+                  // Fetch the updated attendance data
+                  const { data: updatedAttendance, error: fetchUpdatedError } =
+                    await supabase.from("attendance").select("*");
+
+                  if (fetchUpdatedError) {
+                    throw new Error(
+                      `Fetching attendance data failed: ${fetchUpdatedError.message}`,
+                    );
+                  }
+
+                  console.log("Updated attendance data:", updatedAttendance);
+
+                  // Pass the updated attendance data to the parent component
+                  onAttendanceUpdate(updatedAttendance);
+
+                  // Stop the recognition interval after a successful match
+                  clearInterval(recognitionInterval.current);
                 }
 
-                // If an entry exists for today without an end_time, prevent creating a new entry
-                if (existingEntry && existingEntry.length > 0) {
-                  console.log("User already has an active duty for today.");
-                  alert(
-                    "You already have an active duty for today. Please end your duty before starting a new one.",
-                  );
-                  handleCloseModal(); // Close the modal
-                  return; // Exit the function
-                }
-
-                // If no active duty exists, create a new attendance record
-                const { data: attendanceData, error: attendanceError } =
-                  await supabase
-                    .from("attendance")
-                    .insert([
-                      {
-                        user_name: user.username,
-                        date: new Date().toISOString().split("T")[0], // Current date in YYYY-MM-DD format
-                        start_time: new Date().toLocaleTimeString(), // Current time
-                        status: "Present",
-                      },
-                    ])
-                    .select();
-
-                if (attendanceError) {
-                  throw new Error(
-                    `Attendance update failed: ${attendanceError.message}`,
-                  );
-                }
-
-                console.log("Attendance updated:", attendanceData);
-
-                // Set the flag to true to prevent further updates
-                setIsAttendanceUpdated(true);
-                setIsMatchProcessed(true); // Mark the match as processed
-
-                // Fetch the updated attendance data
-                const { data: updatedAttendance, error: fetchUpdatedError } =
-                  await supabase.from("attendance").select("*");
-
-                if (fetchUpdatedError) {
-                  throw new Error(
-                    `Fetching attendance data failed: ${fetchUpdatedError.message}`,
-                  );
-                }
-
-                console.log("Updated attendance data:", updatedAttendance);
-
-                // Pass the updated attendance data to the parent component
-                onAttendanceUpdate(updatedAttendance);
-
-                // Stop the recognition interval after a successful match
-                clearInterval(recognitionInterval.current);
+                handleCloseModal(); // Close the modal after a match
+                return; // Exit after finding a match
               }
             } else {
               console.error("Descriptor length mismatch:", {
@@ -204,7 +205,6 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
     setIsWebcamActive(true);
     setIsRecognizing(true);
     setIsAttendanceUpdated(false); // Reset the flag
-    setIsMatchProcessed(false); // Reset match processed flag
     startRecognition();
   };
 
@@ -215,7 +215,6 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
     setIsRecognizing(false);
     setIsAttendanceUpdated(false); // Reset the flag
     setIsProcessing(false); // Reset processing flag
-    setIsMatchProcessed(false); // Reset match processed flag
     clearInterval(recognitionInterval.current);
   };
 
