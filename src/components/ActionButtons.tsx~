@@ -118,85 +118,85 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
     startRecognition();
   };
 
-  const handleMarkAttendance = async () => {
-    if (!matchedUser) return;
+    const handleMarkAttendance = async () => {
+        if (!matchedUser) return;
 
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      const { data: existingEntry, error: fetchError } = await supabase
-        .from("attendance")
-        .select("*")
-        .eq("user_name", matchedUser.username)
-        .eq("date", today)
-        .is("end_time", null);
+        try {
+            const today = new Date().toISOString().split("T")[0];
+            const { data: existingEntry, error: fetchError } = await supabase
+                .from("attendance")
+                .select("*")
+                .eq("user_name", matchedUser.username)
+                .eq("date", today)
+                .is("end_time", null);
 
-      if (fetchError)
-        throw new Error(`Fetching attendance failed: ${fetchError.message}`);
-      if (existingEntry && existingEntry.length > 0) {
-        alert(
-          "You already have an active duty today. Please end your duty before starting a new one.",
-        );
-        return;
-      }
+            if (fetchError)
+                throw new Error(`Fetching attendance failed: ${fetchError.message}`);
+            if (existingEntry && existingEntry.length > 0) {
+                alert(
+                    "You already have an active duty today. Please end your duty before starting a new one.",
+                );
+                return;
+            }
 
-      const { data: attendanceData, error: attendanceError } = await supabase
-        .from("attendance")
-        .insert([
-          {
-            user_name: matchedUser.username,
-            date: today,
-            start_time: new Date().toLocaleTimeString(),
-            status: "Present",
-          },
-        ])
-        .select();
+            const { data: attendanceData, error: attendanceError } = await supabase
+                .from("attendance")
+                .insert([
+                    {
+                        user_name: matchedUser.username,
+                        date: today,
+                        start_time: new Date().toLocaleTimeString(),
+                        status: "Present",
+                    },
+                ])
+                .select();
 
-      if (attendanceError)
-        throw new Error(`Attendance update failed: ${attendanceError.message}`);
+            if (attendanceError)
+                throw new Error(`Attendance update failed: ${attendanceError.message}`);
 
-      console.log("Attendance updated:", attendanceData);
-      onAttendanceUpdate(matchedUser.username); // Pass the username to refetch data
-      handleCloseModal();
-    } catch (error) {
-      console.error("Error marking attendance:", error);
-    }
-  };
+            console.log("Attendance updated:", attendanceData);
+            onAttendanceUpdate(matchedUser.username); // Pass the username to refetch data
+            handleCloseModal();
+        } catch (error) {
+            console.error("Error marking attendance:", error);
+        }
+    };
 
-  const handleEndDutyUpdate = async () => {
-    if (!matchedUser) return;
+    const handleEndDutyUpdate = async () => {
+        if (!matchedUser) return;
 
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      const { data: existingEntry, error: fetchError } = await supabase
-        .from("attendance")
-        .select("*")
-        .eq("user_name", matchedUser.username)
-        .eq("date", today)
-        .is("end_time", null);
+        try {
+            const today = new Date().toISOString().split("T")[0];
+            const { data: existingEntry, error: fetchError } = await supabase
+                .from("attendance")
+                .select("*")
+                .eq("user_name", matchedUser.username)
+                .eq("date", today)
+                .is("end_time", null);
 
-      if (fetchError)
-        throw new Error(`Fetching attendance failed: ${fetchError.message}`);
-      if (!existingEntry || existingEntry.length === 0) {
-        alert("No active duty found for today.");
-        return;
-      }
+            if (fetchError)
+                throw new Error(`Fetching attendance failed: ${fetchError.message}`);
+            if (!existingEntry || existingEntry.length === 0) {
+                alert("No active duty found for today.");
+                return;
+            }
 
-      const { data: updatedEntry, error: updateError } = await supabase
-        .from("attendance")
-        .update({ end_time: new Date().toLocaleTimeString() })
-        .eq("id", existingEntry[0].id)
-        .select();
+            const { data: updatedEntry, error: updateError } = await supabase
+                .from("attendance")
+                .update({ end_time: new Date().toLocaleTimeString() })
+                .eq("id", existingEntry[0].id)
+                .select();
 
-      if (updateError)
-        throw new Error(`Updating attendance failed: ${updateError.message}`);
+            if (updateError)
+                throw new Error(`Updating attendance failed: ${updateError.message}`);
 
-      console.log("Duty ended:", updatedEntry);
-      onAttendanceUpdate(matchedUser.username); // Pass the username to refetch data
-      handleCloseModal();
-    } catch (error) {
-      console.error("Error ending duty:", error);
-    }
-  };
+            console.log("Duty ended:", updatedEntry);
+            onAttendanceUpdate(matchedUser.username); // Pass the username to refetch data
+            handleCloseModal();
+        } catch (error) {
+            console.error("Error ending duty:", error);
+        }
+    };
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setIsEndDutyModal(false);
