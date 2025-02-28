@@ -10,6 +10,15 @@ const AttendanceTable = ({ attendanceData }) => {
     return `${diff.toFixed(2)} hours`;
   };
 
+  // If no attendance data is available
+  if (!attendanceData || attendanceData.length === 0) {
+    return (
+      <div className="bg-white shadow-lg rounded-lg p-6 text-center text-gray-600">
+        <p>No data available right now.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
       <table className="min-w-full table-auto">
@@ -34,7 +43,7 @@ const AttendanceTable = ({ attendanceData }) => {
           </tr>
         </thead>
         <tbody className="text-gray-700">
-          {attendanceData?.map((item, index) => (
+          {attendanceData.map((item, index) => (
             <tr key={index} className="border-b">
               <td className="px-6 py-4 text-sm text-left">{item.user_name}</td>
               <td className="px-6 py-4 text-sm text-left">{item.date}</td>

@@ -14,6 +14,7 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
   const [faceDetected, setFaceDetected] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [matchedUser, setMatchedUser] = useState(null);
+  const [isEndDutyModal, setIsEndDutyModal] = useState(false); // New state for End Duty modal
   const isProcessing = useRef(false);
   const webcamRef = useRef(null);
   const recognitionInterval = useRef(null);
@@ -109,6 +110,14 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
     startRecognition();
   };
 
+  const handleEndDuty = () => {
+    setIsEndDutyModal(true); // Open End Duty modal
+    setIsWebcamActive(true);
+    setMatchedUser(null); // Reset matched user
+    isProcessing.current = false;
+    startRecognition();
+  };
+
   const handleMarkAttendance = async () => {
     if (!matchedUser) return;
 
@@ -153,8 +162,45 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
     }
   };
 
+  const handleEndDutyUpdate = async () => {
+    if (!matchedUser) return;
+
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const { data: existingEntry, error: fetchError } = await supabase
+        .from("attendance")
+        .select("*")
+        .eq("user_name", matchedUser.username)
+        .eq("date", today)
+        .is("end_time", null);
+
+      if (fetchError)
+        throw new Error(`Fetching attendance failed: ${fetchError.message}`);
+      if (!existingEntry || existingEntry.length === 0) {
+        alert("No active duty found for today.");
+        return;
+      }
+
+      const { data: updatedEntry, error: updateError } = await supabase
+        .from("attendance")
+        .update({ end_time: new Date().toLocaleTimeString() })
+        .eq("id", existingEntry[0].id)
+        .select();
+
+      if (updateError)
+        throw new Error(`Updating attendance failed: ${updateError.message}`);
+
+      console.log("Duty ended:", updatedEntry);
+      onAttendanceUpdate(updatedEntry);
+      handleCloseModal();
+    } catch (error) {
+      console.error("Error ending duty:", error);
+    }
+  };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
+    setIsEndDutyModal(false);
     setIsWebcamActive(false);
     setMatchedUser(null);
     isProcessing.current = false;
@@ -175,13 +221,14 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
         <Button
           variant="destructive"
           className="flex items-center space-x-2 px-6 py-3 text-lg font-semibold bg-red-100 hover:bg-red-200 focus:ring-2 ring-red-500"
+          onClick={handleEndDuty}
         >
           <FaStop className="text-red-500" />
           <span className="text-black">End Duty</span>
         </Button>
       </div>
 
-      {isModalOpen && (
+      {(isModalOpen || isEndDutyModal) && (
         <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex justify-center items-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-96">
             <div className="flex justify-between items-center">
@@ -217,12 +264,22 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
                   <p className="text-green-600 font-semibold">
                     User Matched: {matchedUser.username}
                   </p>
-                  <Button
-                    onClick={handleMarkAttendance}
-                    className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md"
-                  >
-                    Mark Present
-                  </Button>
+                  {isModalOpen && (
+                    <Button
+                      onClick={handleMarkAttendance}
+                      className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-md"
+                    >
+                      Mark Present
+                    </Button>
+                  )}
+                  {isEndDutyModal && (
+                    <Button
+                      onClick={handleEndDutyUpdate}
+                      className="mt-2 px-4 py-2 bg-red-500 text-white rounded-md"
+                    >
+                      End Duty
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
