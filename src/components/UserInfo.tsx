@@ -30,11 +30,13 @@ function UserInfo({ user }) {
   }, [user]);
 
   return (
-    <Card className="shadow-lg rounded-lg">
-      <CardHeader>
-        <CardTitle className="text-xl font-semibold">Employee Info</CardTitle>
+    <Card className="shadow-lg rounded-lg max-w-sm mx-auto bg-white border-2 border-gray-200">
+      <CardHeader className="bg-blue-600 p-4 rounded-t-lg">
+        <CardTitle className="text-xl font-bold text-white text-center">
+          Employee ID Card
+        </CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         {user ? (
           <div className="space-y-4">
             {/* Profile Picture */}
@@ -43,20 +45,33 @@ function UserInfo({ user }) {
                 <img
                   src={profilePicUrl}
                   alt="Profile"
-                  className="w-24 h-24 rounded-full object-cover"
+                  className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
                 />
               </div>
             )}
+
             {/* User Information */}
-            <p>
-              <strong>Name:</strong> {user.username}
-            </p>
-            <p>
-              <strong>Role:</strong> {user.role}
-            </p>
+            <div className="text-center space-y-2">
+              <p className="text-xl font-semibold text-gray-800">
+                {user.username}
+              </p>
+              <p className="text-lg text-gray-600">{user.role}</p>
+            </div>
+
+            {/* Additional Details (Optional) */}
+            <div className="mt-4 border-t border-gray-200 pt-4">
+              <p className="text-sm text-gray-600">
+                <strong>Employee ID:</strong>{" "}
+                {user.id
+                  ? `${user.id.substring(0, 6)}...` // Truncate the ID and add ellipsis
+                  : "N/A"}
+              </p>
+            </div>
           </div>
         ) : (
-          <p>No employee data available.</p>
+          <p className="text-gray-600 text-center">
+            No employee data available.
+          </p>
         )}
       </CardContent>
     </Card>
