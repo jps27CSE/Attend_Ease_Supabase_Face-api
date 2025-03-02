@@ -86,7 +86,8 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
           storedDescriptor,
           faceDescriptor,
         );
-        if (distance < 0.5) {
+        if (distance < 0.4) {
+          // Adjusted threshold
           console.log("User matched:", user);
           setMatchedUser(user);
           onUserMatch(user);
@@ -102,7 +103,6 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
       isProcessing.current = false;
     }
   };
-
   const handleStartDuty = () => {
     setIsModalOpen(true);
     setIsWebcamActive(true);
@@ -213,7 +213,7 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
   return (
     <>
       {/* Add Toaster component to render toast notifications */}
-      <Toaster position="top-right" />
+      {/*<Toaster position="top-right" />*/}
 
       <div className="p-6 bg-gray-200 rounded-lg shadow-lg flex justify-center items-center space-x-6">
         <Button
