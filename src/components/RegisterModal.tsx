@@ -136,37 +136,39 @@ const RegisterModal = ({ open, setOpen }) => {
               Close
             </Button>
           </div>
-          <div className="mt-4">
-            <label
-              htmlFor="username"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Username
-            </label>
-            <input
-              type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full mt-2 p-2 border border-gray-300 rounded-md text-black"
-              placeholder="Enter username"
-            />
-          </div>
-          <div className="mt-4">
-            <label
-              htmlFor="role"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Role/Designation
-            </label>
-            <input
-              type="text"
-              id="role"
-              value={role}
-              onChange={(e) => setRole(e.target.value)}
-              className="w-full mt-2 p-2 border border-gray-300 rounded-md text-black"
-              placeholder="Enter role/designation (e.g., Software Engineer)"
-            />
+          <div className="mt-4 grid grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Username
+              </label>
+              <input
+                type="text"
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full mt-2 p-2 border border-gray-300 rounded-md text-black"
+                placeholder="Enter username"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="role"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Role/Designation
+              </label>
+              <input
+                type="text"
+                id="role"
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="w-full mt-2 p-2 border border-gray-300 rounded-md text-black"
+                placeholder="Enter role/designation (e.g., Software Engineer)"
+              />
+            </div>
           </div>
           <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700">
@@ -221,11 +223,11 @@ const RegisterModal = ({ open, setOpen }) => {
               </div>
             )}
           </div>
-          <div className="mt-4">
+          <div className="mt-4 flex justify-center">
             <Button
-              variant="primary"
+              variant="outline"
               onClick={handleSubmit}
-              className="w-full text-black"
+              className="px-6 py-2 text-black w-full"
             >
               Submit
             </Button>
@@ -235,5 +237,4 @@ const RegisterModal = ({ open, setOpen }) => {
     )
   );
 };
-
 export default RegisterModal;
