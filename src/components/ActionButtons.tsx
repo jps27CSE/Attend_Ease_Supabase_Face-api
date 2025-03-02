@@ -85,11 +85,12 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
           storedDescriptor,
           faceDescriptor,
         );
-        if (distance < 0.6) {
+        if (distance < 0.5) {
+          // Adjusted threshold
           console.log("User matched:", user);
-          setMatchedUser(user); // Store matched user
-          onUserMatch(user); // Pass user to parent component
-          clearInterval(recognitionInterval.current); // Stop recognition
+          setMatchedUser(user);
+          onUserMatch(user);
+          clearInterval(recognitionInterval.current);
           return;
         }
       }

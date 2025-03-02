@@ -61,7 +61,7 @@ const RegisterModal = ({ open, setOpen }) => {
         const detections = await faceapi
           .detectAllFaces(
             webcamRef.current.video,
-            new faceapi.SsdMobilenetv1Options(),
+            new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }), // Adjust confidence threshold
           )
           .withFaceLandmarks()
           .withFaceDescriptors();
@@ -69,6 +69,7 @@ const RegisterModal = ({ open, setOpen }) => {
         if (detections.length > 0) {
           setFaceDetected(true);
           setFaceDescriptor(detections[0].descriptor);
+          console.log("Face Descriptor:", Array.from(detections[0].descriptor)); // Log descriptor
         } else {
           setFaceDetected(false);
         }
