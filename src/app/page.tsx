@@ -5,6 +5,7 @@ import UserInfo from "@/components/UserInfo";
 import ActionButtons from "@/components/ActionButtons";
 import AttendanceTable from "@/components/AttendanceTable";
 import Navbar from "@/components/Navbar";
+import { Toaster } from "react-hot-toast";
 
 export default function Home() {
   const [matchedUser, setMatchedUser] = useState(null);
@@ -14,13 +15,14 @@ export default function Home() {
   const fetchUserAttendanceData = async (username) => {
     try {
       const { data, error } = await supabase
-          .from("attendance")
-          .select("*")
-          .eq("user_name", username) // Filter by the matched user's username
-          .order("date", { ascending: false }) // Sort by date (newest first)
-          .order("start_time", { ascending: false }); // Sort by start_time (newest first)
+        .from("attendance")
+        .select("*")
+        .eq("user_name", username) // Filter by the matched user's username
+        .order("date", { ascending: false }) // Sort by date (newest first)
+        .order("start_time", { ascending: false }); // Sort by start_time (newest first)
 
-      if (error) throw new Error(`Error fetching attendance data: ${error.message}`);
+      if (error)
+        throw new Error(`Error fetching attendance data: ${error.message}`);
       setAttendanceData(data); // Update state with the user's attendance data
     } catch (error) {
       console.error("Error fetching attendance data:", error);
@@ -40,6 +42,7 @@ export default function Home() {
 
   return (
     <div>
+      <Toaster />
       <Navbar />
       <div className="p-10 bg-gray-100 dark:bg-gray-900 min-h-screen space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

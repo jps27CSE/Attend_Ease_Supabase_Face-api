@@ -5,6 +5,7 @@ import { FaPlay, FaStop } from "react-icons/fa";
 import * as faceapi from "face-api.js";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabaseClient";
+import toast, { Toaster } from "react-hot-toast"; // Import toast and Toaster
 
 const Webcam = dynamic(() => import("react-webcam"), { ssr: false });
 
@@ -14,7 +15,7 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
   const [faceDetected, setFaceDetected] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [matchedUser, setMatchedUser] = useState(null);
-  const [isEndDutyModal, setIsEndDutyModal] = useState(false); // New state for End Duty modal
+  const [isEndDutyModal, setIsEndDutyModal] = useState(false);
   const isProcessing = useRef(false);
   const webcamRef = useRef(null);
   const recognitionInterval = useRef(null);
@@ -86,7 +87,6 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
           faceDescriptor,
         );
         if (distance < 0.5) {
-          // Adjusted threshold
           console.log("User matched:", user);
           setMatchedUser(user);
           onUserMatch(user);
@@ -134,7 +134,8 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
       if (fetchError)
         throw new Error(`Fetching attendance failed: ${fetchError.message}`);
       if (existingEntry && existingEntry.length > 0) {
-        alert(
+        // Replace alert with toast
+        toast.error(
           "You already have an active duty today. Please end your duty before starting a new one.",
         );
         return;
@@ -178,7 +179,8 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
       if (fetchError)
         throw new Error(`Fetching attendance failed: ${fetchError.message}`);
       if (!existingEntry || existingEntry.length === 0) {
-        alert("No active duty found for today.");
+        // Replace alert with toast
+        toast.error("No active duty found for today.");
         return;
       }
 
@@ -198,6 +200,7 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
       console.error("Error ending duty:", error);
     }
   };
+
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setIsEndDutyModal(false);
@@ -209,6 +212,9 @@ function ActionButtons({ onUserMatch, onAttendanceUpdate }) {
 
   return (
     <>
+      {/* Add Toaster component to render toast notifications */}
+      <Toaster position="top-right" />
+
       <div className="p-6 bg-gray-200 rounded-lg shadow-lg flex justify-center items-center space-x-6">
         <Button
           variant="outline"
